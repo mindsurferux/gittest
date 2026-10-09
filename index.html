@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#101010">
+    <title>Conversaciones — una comunidad en voz alta</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #101010;
+        color: #f5f5f5;
+        font-synthesis: none;
+        text-rendering: optimizeLegibility;
+        --muted: #777;
+        --line: #252525;
+        --surface: #171717;
+        --accent: #6fa8ff;
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; min-width: 320px; }
+      button, textarea { font: inherit; }
+      button { color: inherit; }
+      button:focus-visible, textarea:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 3px;
+      }
+
+      .app { min-height: 100vh; }
+      .topbar {
+        position: sticky;
+        z-index: 2;
+        top: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 62px;
+        padding: 0 max(24px, calc((100vw - 1180px) / 2));
+        border-bottom: 1px solid var(--line);
+        background: rgb(16 16 16 / 94%);
+        backdrop-filter: blur(14px);
+      }
+      .wordmark { font-size: 21px; font-weight: 750; letter-spacing: -1px; }
+      .top-actions { display: flex; align-items: center; gap: 18px; }
+      .icon-button, .nav-link, .action-button, .tab {
+        border: 0;
+        background: none;
+        cursor: pointer;
+      }
+      .icon-button { color: #aaa; font-size: 20px; }
+      .layout {
+        display: grid;
+        grid-template-columns: 230px minmax(0, 620px) 280px;
+        gap: 34px;
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 26px 24px 80px;
+      }
+      .sidebar { position: sticky; top: 86px; align-self: start; }
+      .nav { display: grid; gap: 8px; }
+      .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 12px 14px;
+        border-radius: 12px;
+        color: #aaa;
+        text-align: left;
+        font-size: 15px;
+      }
+      .nav-link:hover, .nav-link.active { color: #fff; background: #1c1c1c; }
+      .nav-icon { width: 22px; text-align: center; font-size: 19px; }
+      .new-thread {
+        width: 100%;
+        margin-top: 22px;
+        padding: 12px;
+        border: 0;
+        border-radius: 10px;
+        background: #f4f4f4;
+        color: #111;
+        cursor: pointer;
+        font-weight: 700;
+      }
+      .feed { min-width: 0; }
+      .feed-heading { margin: 5px 0 18px; font-size: 24px; letter-spacing: -.6px; }
+      .tabs { display: flex; border-bottom: 1px solid var(--line); }
+      .tab {
+        position: relative;
+        flex: 1;
+        padding: 14px 8px;
+        color: var(--muted);
+        font-weight: 650;
+      }
+      .tab.active { color: #fff; }
+      .tab.active::after {
+        position: absolute;
+        right: 0;
+        bottom: -1px;
+        left: 0;
+        height: 2px;
+        background: #f5f5f5;
+        content: "";
+      }
+      .composer, .post { border-bottom: 1px solid var(--line); }
+      .composer { display: flex; gap: 12px; padding: 20px 2px; }
+      .avatar {
+        display: grid;
+        flex: 0 0 42px;
+        width: 42px;
+        height: 42px;
+        place-items: center;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #b7a2ff, #557de8);
+        color: white;
+        font-size: 13px;
+        font-weight: 750;
+      }
+      .avatar.peach { background: linear-gradient(135deg, #f7bd8d, #e37668); }
+      .avatar.green { background: linear-gradient(135deg, #83c9a1, #398575); }
+      .avatar.pink { background: linear-gradient(135deg, #ec9fc3, #9e5a9a); }
+      .composer-content { flex: 1; min-width: 0; }
+      .composer textarea, .reply-form textarea {
+        display: block;
+        width: 100%;
+        min-height: 43px;
+        resize: vertical;
+        border: 0;
+        background: transparent;
+        color: #f5f5f5;
+        font-size: 15px;
+        line-height: 1.5;
+      }
+      textarea::placeholder { color: #777; opacity: 1; }
+      .composer-footer { display: flex; justify-content: flex-end; padding-top: 8px; }
+      .post-button, .reply-submit {
+        padding: 8px 16px;
+        border: 0;
+        border-radius: 999px;
+        background: #f5f5f5;
+        color: #111;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .post-button:disabled, .reply-submit:disabled { cursor: default; opacity: .45; }
+      .post { display: flex; gap: 12px; padding: 20px 2px 18px; }
+      .post-main { flex: 1; min-width: 0; }
+      .post-meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+      .name { font-size: 14px; font-weight: 700; }
+      .handle, .time { color: var(--muted); font-size: 13px; }
+      .post-menu { margin-left: auto; border: 0; background: none; color: var(--muted); }
+      .post-copy { margin: 8px 0 13px; color: #eee; font-size: 15px; line-height: 1.55; }
+      .post-image {
+        display: grid;
+        min-height: 245px;
+        margin: 12px 0;
+        overflow: hidden;
+        place-items: center;
+        border: 1px solid #292929;
+        border-radius: 12px;
+        background:
+          radial-gradient(ellipse at 72% 26%, rgb(246 179 115 / 85%), transparent 24%),
+          radial-gradient(ellipse at 30% 90%, rgb(62 102 125 / 90%), transparent 39%),
+          linear-gradient(145deg, #2b2943, #77605e 54%, #d59469);
+        color: rgb(255 255 255 / 85%);
+        font-size: 12px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+      .post-actions { display: flex; flex-wrap: wrap; gap: 21px; }
+      .action-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 2px 0;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .action-button:hover, .action-button.liked { color: #f08bab; }
+      .action-button.reply-action:hover { color: var(--accent); }
+      .replies {
+        display: none;
+        margin: 17px 0 0 4px;
+        padding: 0 0 0 16px;
+        border-left: 1px solid #3a3a3a;
+      }
+      .replies.open { display: block; }
+      .reply { display: flex; gap: 10px; padding: 12px 0; }
+      .reply .avatar { flex-basis: 30px; width: 30px; height: 30px; font-size: 10px; }
+      .reply-copy { flex: 1; min-width: 0; }
+      .reply-copy .name { font-size: 13px; }
+      .reply-copy p { margin: 5px 0 0; color: #ddd; font-size: 13px; line-height: 1.5; }
+      .reply-form { display: flex; align-items: flex-end; gap: 8px; padding: 10px 0; }
+      .reply-form textarea { min-height: 36px; font-size: 13px; }
+      .reply-submit { padding: 7px 12px; font-size: 12px; }
+      .right-rail { position: sticky; top: 86px; align-self: start; }
+      .rail-card { margin-bottom: 16px; padding: 17px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+      .rail-card h2 { margin: 0 0 14px; font-size: 15px; }
+      .suggestion { display: flex; align-items: center; gap: 10px; margin: 13px 0; }
+      .suggestion .avatar { flex-basis: 34px; width: 34px; height: 34px; font-size: 11px; }
+      .suggestion-info { flex: 1; min-width: 0; }
+      .suggestion-info strong, .suggestion-info span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .suggestion-info strong { font-size: 12px; }
+      .suggestion-info span { margin-top: 3px; color: var(--muted); font-size: 11px; }
+      .follow {
+        padding: 6px 10px;
+        border: 1px solid #444;
+        border-radius: 999px;
+        background: transparent;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 700;
+      }
+      .follow.following { border-color: #333; color: #888; }
+      .rail-note { color: var(--muted); font-size: 12px; line-height: 1.6; }
+      .rail-note a { color: #aaa; text-decoration: none; }
+      .rail-note a:hover { text-decoration: underline; }
+      .toast {
+        position: fixed;
+        right: 24px;
+        bottom: 24px;
+        z-index: 3;
+        padding: 12px 16px;
+        border: 1px solid #333;
+        border-radius: 10px;
+        background: #202020;
+        color: #eee;
+        box-shadow: 0 8px 30px rgb(0 0 0 / 35%);
+        font-size: 13px;
+      }
+      .toast[hidden] { display: none; }
+
+      @media (max-width: 1000px) {
+        .layout { grid-template-columns: 190px minmax(0, 620px); max-width: 900px; }
+        .right-rail { display: none; }
+      }
+      @media (max-width: 650px) {
+        .topbar { height: 56px; padding: 0 18px; }
+        .top-actions { gap: 12px; }
+        .layout { display: block; padding: 14px 16px 76px; }
+        .sidebar { position: fixed; z-index: 2; right: 0; bottom: 0; left: 0; top: auto; border-top: 1px solid var(--line); background: #101010; }
+        .nav { display: flex; justify-content: space-around; gap: 0; }
+        .nav-link { justify-content: center; width: 20%; padding: 13px 5px; }
+        .nav-label, .new-thread { display: none; }
+        .feed-heading { margin-top: 3px; font-size: 22px; }
+        .post, .composer { gap: 10px; }
+        .avatar { flex-basis: 38px; width: 38px; height: 38px; }
+        .post-actions { gap: 17px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <a class="wordmark" href="#" aria-label="Conversaciones, inicio">conversaciones</a>
+        <div class="top-actions">
+          <button class="icon-button" type="button" aria-label="Buscar">⌕</button>
+          <button class="icon-button" type="button" aria-label="Actividad">♡</button>
+          <div class="avatar" aria-label="Tu perfil">TÚ</div>
+        </div>
+      </header>
+
+      <div class="layout">
+        <aside class="sidebar" aria-label="Navegación principal">
+          <nav class="nav">
+            <button class="nav-link active" type="button"><span class="nav-icon">⌂</span><span class="nav-label">Inicio</span></button>
+            <button class="nav-link" type="button"><span class="nav-icon">⌕</span><span class="nav-label">Buscar</span></button>
+            <button class="nav-link" type="button"><span class="nav-icon">＋</span><span class="nav-label">Crear</span></button>
+            <button class="nav-link" type="button"><span class="nav-icon">♡</span><span class="nav-label">Actividad</span></button>
+            <button class="nav-link" type="button"><span class="nav-icon">◉</span><span class="nav-label">Perfil</span></button>
+          </nav>
+          <button class="new-thread" type="button" data-focus-composer>Crear hilo</button>
+        </aside>
+
+        <main class="feed">
+          <h1 class="feed-heading">Tu espacio</h1>
+          <div class="tabs" role="tablist" aria-label="Orden del feed">
+            <button class="tab active" type="button" role="tab" aria-selected="true">Para ti</button>
+            <button class="tab" type="button" role="tab" aria-selected="false">Siguiendo</button>
+          </div>
+
+          <form class="composer" id="composer">
+            <div class="avatar" aria-hidden="true">TÚ</div>
+            <div class="composer-content">
+              <textarea id="post-text" aria-label="Escribe una publicación" placeholder="¿Qué está pasando?"></textarea>
+              <div class="composer-footer"><button class="post-button" type="submit" disabled>Publicar</button></div>
+            </div>
+          </form>
+
+          <section id="posts" aria-label="Publicaciones recientes">
+            <article class="post">
+              <div class="avatar peach" aria-hidden="true">ML</div>
+              <div class="post-main">
+                <div class="post-meta"><span class="name">María López</span><span class="handle">@marialopez</span><span class="time">· 12 min</span><button class="post-menu" type="button" aria-label="Más opciones">•••</button></div>
+                <p class="post-copy">A veces la mejor idea aparece cuando dejas de perseguirla. Hoy salí a caminar sin rumbo y volví con la cabeza llena de proyectos. ✨</p>
+                <div class="post-actions">
+                  <button class="action-button reply-action" type="button" data-toggle-replies aria-expanded="false"><span>◯</span><span class="reply-count">4</span></button>
+                  <button class="action-button" type="button" data-repost><span>↻</span><span>2</span></button>
+                  <button class="action-button like-action" type="button" data-like aria-pressed="false"><span>♡</span><span class="like-count">28</span></button>
+                  <button class="action-button" type="button" data-share><span>↗</span></button>
+                </div>
+                <div class="replies" aria-label="Respuestas">
+                  <div class="reply"><div class="avatar green" aria-hidden="true">JP</div><div class="reply-copy"><div class="post-meta"><span class="name">Julián Pérez</span><span class="handle">@julianp</span><span class="time">· 8 min</span></div><p>Las caminatas son el mejor botón de reinicio. ¿Por dónde fuiste?</p></div></div>
+                  <div class="reply"><div class="avatar pink" aria-hidden="true">AC</div><div class="reply-copy"><div class="post-meta"><span class="name">Ana Cruz</span><span class="handle">@anac</span><span class="time">· 5 min</span></div><p>Me encanta esa sensación de volver con nuevas ideas 🌿</p></div></div>
+                  <form class="reply-form"><textarea aria-label="Escribe una respuesta" placeholder="Responde a María..."></textarea><button class="reply-submit" type="submit" disabled>Responder</button></form>
+                </div>
+              </div>
+            </article>
+
+            <article class="post">
+              <div class="avatar green" aria-hidden="true">JP</div>
+              <div class="post-main">
+                <div class="post-meta"><span class="name">Julián Pérez</span><span class="handle">@julianp</span><span class="time">· 34 min</span><button class="post-menu" type="button" aria-label="Más opciones">•••</button></div>
+                <p class="post-copy">Pequeño recordatorio: no hace falta tenerlo todo resuelto para dar el siguiente paso.</p>
+                <div class="post-image" role="img" aria-label="Ilustración abstracta de un atardecer">un paso a la vez</div>
+                <div class="post-actions">
+                  <button class="action-button reply-action" type="button" data-toggle-replies aria-expanded="false"><span>◯</span><span class="reply-count">12</span></button>
+                  <button class="action-button" type="button" data-repost><span>↻</span><span>7</span></button>
+                  <button class="action-button like-action" type="button" data-like aria-pressed="false"><span>♡</span><span class="like-count">96</span></button>
+                  <button class="action-button" type="button" data-share><span>↗</span></button>
+                </div>
+                <div class="replies" aria-label="Respuestas">
+                  <div class="reply"><div class="avatar peach" aria-hidden="true">ML</div><div class="reply-copy"><div class="post-meta"><span class="name">María López</span><span class="handle">@marialopez</span><span class="time">· 20 min</span></div><p>Justo lo que necesitaba leer hoy. Gracias por compartirlo.</p></div></div>
+                  <form class="reply-form"><textarea aria-label="Escribe una respuesta" placeholder="Responde a Julián..."></textarea><button class="reply-submit" type="submit" disabled>Responder</button></form>
+                </div>
+              </div>
+            </article>
+
+            <article class="post">
+              <div class="avatar pink" aria-hidden="true">AC</div>
+              <div class="post-main">
+                <div class="post-meta"><span class="name">Ana Cruz</span><span class="handle">@anac</span><span class="time">· 1 h</span><button class="post-menu" type="button" aria-label="Más opciones">•••</button></div>
+                <p class="post-copy">Pregunta para el hilo: ¿qué libro recomendarían una y otra vez? Yo empiezo: uno que te haya cambiado la forma de ver algo.</p>
+                <div class="post-actions">
+                  <button class="action-button reply-action" type="button" data-toggle-replies aria-expanded="false"><span>◯</span><span class="reply-count">23</span></button>
+                  <button class="action-button" type="button" data-repost><span>↻</span><span>11</span></button>
+                  <button class="action-button like-action" type="button" data-like aria-pressed="false"><span>♡</span><span class="like-count">54</span></button>
+                  <button class="action-button" type="button" data-share><span>↗</span></button>
+                </div>
+                <div class="replies" aria-label="Respuestas">
+                  <div class="reply"><div class="avatar" aria-hidden="true">DR</div><div class="reply-copy"><div class="post-meta"><span class="name">Diego Ruiz</span><span class="handle">@druiz</span><span class="time">· 42 min</span></div><p>“Siddhartha”, de Hermann Hesse. Siempre me deja pensando.</p></div></div>
+                  <form class="reply-form"><textarea aria-label="Escribe una respuesta" placeholder="Responde a Ana..."></textarea><button class="reply-submit" type="submit" disabled>Responder</button></form>
+                </div>
+              </div>
+            </article>
+          </section>
+        </main>
+
+        <aside class="right-rail" aria-label="Descubrir">
+          <section class="rail-card">
+            <h2>Personas que quizá conozcas</h2>
+            <div class="suggestion"><div class="avatar pink" aria-hidden="true">AC</div><div class="suggestion-info"><strong>Ana Cruz</strong><span>@anac</span></div><button class="follow" type="button">Seguir</button></div>
+            <div class="suggestion"><div class="avatar green" aria-hidden="true">JP</div><div class="suggestion-info"><strong>Julián Pérez</strong><span>@julianp</span></div><button class="follow" type="button">Seguir</button></div>
+            <div class="suggestion"><div class="avatar peach" aria-hidden="true">ML</div><div class="suggestion-info"><strong>María López</strong><span>@marialopez</span></div><button class="follow" type="button">Seguir</button></div>
+          </section>
+          <section class="rail-card">
+            <h2>Sobre este espacio</h2>
+            <p class="rail-note">Un prototipo para compartir ideas, iniciar conversaciones y seguir los hilos que te interesan.</p>
+            <p class="rail-note"><a href="#">Acerca de</a> · <a href="#">Privacidad</a> · <a href="#">Condiciones</a></p>
+          </section>
+        </aside>
+      </div>
+      <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+    </div>
+
+    <script>
+      const postText = document.querySelector("#post-text");
+      const postButton = document.querySelector(".post-button");
+      const toast = document.querySelector("#toast");
+      let toastTimer;
+
+      function showToast(message) {
+        toast.textContent = message;
+        toast.hidden = false;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { toast.hidden = true; }, 2200);
+      }
+
+      postText.addEventListener("input", () => {
+        postButton.disabled = postText.value.trim().length === 0;
+      });
+
+      document.querySelector("#composer").addEventListener("submit", (event) => {
+        event.preventDefault();
+        const text = postText.value.trim();
+        if (!text) return;
+
+        const article = document.createElement("article");
+        article.className = "post";
+        article.innerHTML = `
+          <div class="avatar" aria-hidden="true">TÚ</div>
+          <div class="post-main">
+            <div class="post-meta"><span class="name">Tú</span><span class="handle">@tuusuario</span><span class="time">· ahora</span></div>
+            <p class="post-copy"></p>
+            <div class="post-actions">
+              <button class="action-button reply-action" type="button" data-toggle-replies aria-expanded="false"><span>◯</span><span class="reply-count">0</span></button>
+              <button class="action-button" type="button" data-repost><span>↻</span><span>0</span></button>
+              <button class="action-button like-action" type="button" data-like aria-pressed="false"><span>♡</span><span class="like-count">0</span></button>
+              <button class="action-button" type="button" data-share><span>↗</span></button>
+            </div>
+            <div class="replies" aria-label="Respuestas">
+              <form class="reply-form"><textarea aria-label="Escribe una respuesta" placeholder="Responde a tu publicación..."></textarea><button class="reply-submit" type="submit" disabled>Responder</button></form>
+            </div>
+          </div>`;
+        article.querySelector(".post-copy").textContent = text;
+        document.querySelector("#posts").prepend(article);
+        postText.value = "";
+        postButton.disabled = true;
+        showToast("Tu publicación se agregó al feed");
+      });
+
+      document.addEventListener("input", (event) => {
+        if (!event.target.matches(".reply-form textarea")) return;
+        event.target.closest(".reply-form").querySelector("button").disabled = event.target.value.trim().length === 0;
+      });
+
+      document.addEventListener("submit", (event) => {
+        if (!event.target.matches(".reply-form")) return;
+        event.preventDefault();
+        const form = event.target;
+        const textarea = form.querySelector("textarea");
+        const text = textarea.value.trim();
+        if (!text) return;
+        const reply = document.createElement("div");
+        reply.className = "reply";
+        reply.innerHTML = '<div class="avatar" aria-hidden="true">TÚ</div><div class="reply-copy"><div class="post-meta"><span class="name">Tú</span><span class="handle">@tuusuario</span><span class="time">· ahora</span></div><p></p></div>';
+        reply.querySelector("p").textContent = text;
+        form.before(reply);
+        const count = form.closest(".post-main").querySelector(".reply-count");
+        count.textContent = String(Number(count.textContent) + 1);
+        textarea.value = "";
+        form.querySelector("button").disabled = true;
+        showToast("Tu respuesta se agregó al hilo");
+      });
+
+      document.addEventListener("click", (event) => {
+        const button = event.target.closest("button");
+        if (!button) return;
+        if (button.matches("[data-focus-composer]")) {
+          postText.focus();
+        } else if (button.matches("[data-toggle-replies]")) {
+          const replies = button.closest(".post-main").querySelector(".replies");
+          const isOpen = replies.classList.toggle("open");
+          button.setAttribute("aria-expanded", String(isOpen));
+          if (isOpen) replies.querySelector("textarea")?.focus();
+        } else if (button.matches("[data-like]")) {
+          const liked = button.getAttribute("aria-pressed") === "true";
+          const count = button.querySelector(".like-count");
+          count.textContent = String(Number(count.textContent) + (liked ? -1 : 1));
+          button.setAttribute("aria-pressed", String(!liked));
+          button.classList.toggle("liked", !liked);
+          button.querySelector("span").textContent = liked ? "♡" : "♥";
+        } else if (button.matches("[data-repost]")) {
+          showToast("Función de republicar simulada");
+        } else if (button.matches("[data-share]")) {
+          showToast("Función de compartir simulada");
+        } else if (button.matches(".follow")) {
+          const following = button.classList.toggle("following");
+          button.textContent = following ? "Siguiendo" : "Seguir";
+        } else if (button.matches(".tab")) {
+          document.querySelectorAll(".tab").forEach((tab) => {
+            const selected = tab === button;
+            tab.classList.toggle("active", selected);
+            tab.setAttribute("aria-selected", String(selected));
+          });
+          if (button.textContent.trim() === "Siguiendo") showToast("Mostrando publicaciones de las personas que sigues");
+        }
+      });
+    </script>
+  </body>
+</html>
